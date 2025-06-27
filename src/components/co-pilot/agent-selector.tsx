@@ -3,10 +3,14 @@
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
+import type { ElementType } from 'react';
 
 export interface Agent {
   id: string;
   name: string;
+  icon: ElementType;
+  color: string;
+  avatarLabel: string;
 }
 
 interface AgentSelectorProps {
@@ -25,14 +29,15 @@ export function AgentSelector({ agents, selectedAgent, onSelectAgent }: AgentSel
             key={agent.id}
             onClick={() => onSelectAgent(agent)}
             className={cn(
-              'cursor-pointer bg-secondary/50 border-2 border-transparent hover:border-primary transition-all duration-300 group',
-              selectedAgent.id === agent.id && 'border-primary shadow-[0_0_15px_0px_hsl(var(--primary)/0.5)]'
+              'cursor-pointer border-2 hover:border-primary transition-all duration-300 group',
+              agent.color,
+              selectedAgent.id === agent.id ? 'border-primary shadow-[0_0_15px_0px_hsl(var(--primary)/0.5)]' : 'border-transparent'
             )}
           >
             <CardContent className="p-4 flex flex-col items-center gap-3">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-background flex items-center justify-center border-2 border-primary/20 group-hover:border-primary transition-all">
                 <Image
-                  src={`https://placehold.co/100x100/1a1a2e/be29ec.gif?text=${agent.name.charAt(0)}`}
+                  src={`https://placehold.co/100x100/1a1a2e/be29ec.gif?text=${agent.avatarLabel}`}
                   alt={`${agent.name} animated portrait`}
                   width={96}
                   height={96}

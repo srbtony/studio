@@ -12,6 +12,7 @@ import {z} from 'zod';
 
 const McpChatInputSchema = z.object({
   agentId: z.string().describe('The ID of the agent to chat with.'),
+  agentName: z.string().describe('The display name of the agent for the prompt.'),
   message: z.string().describe('The user message to the agent.'),
 });
 export type McpChatInput = z.infer<typeof McpChatInputSchema>;
@@ -37,13 +38,18 @@ const mcpChatFlow = ai.defineFlow(
     outputSchema: McpChatOutputSchema,
   },
   async (input) => {
+    const finalMessage = `Requesting ${input.agentName} Agent to answer the following ... ${input.message}`;
+    
     try {
       const response = await fetch(MCP_SERVER_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+            agentId: input.agentId,
+            message: finalMessage,
+        }),
       });
 
       if (!response.ok) {
