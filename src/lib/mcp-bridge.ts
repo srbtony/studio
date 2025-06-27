@@ -1,55 +1,99 @@
+import { LangflowClient } from '@datastax/langflow-client';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { AgentBridge, AGENT_CONFIG, AgentName } from './agents/agent-bridge';
 
-// Hybrid bridge that tries streaming first, falls back to MCP client
-export class MCPBridge {
-  private baseUrl = 'http://localhost:7860';
+// MCP bridge for agents with DB access
+export class MCPBridge implements AgentBridge {
+  private localBridge: any = null;
+  private langflowClient: LangflowClient;
   private flowId = '5b174466-3968-481d-8f9b-77ddcc16da00';
   private mcpClient: Client | null = null;
   private mcpTransport: StdioClientTransport | null = null;
 
-  async callAgent(agentName: string, message: string): Promise<string> {
-    // Try streaming first
-    try {
-      return await this.tryStreaming(message);
-    } catch (streamError) {
-      console.log('Streaming failed, falling back to MCP client:', streamError.message);
-      // Fall back to MCP client
-      return await this.tryMCPClient(agentName, message);
-    }
+  constructor() {
+    this.langflowClient = new LangflowClient({
+      baseUrl: 'http://localhost:7860'
+    });
   }
 
-  private async tryStreaming(message: string): Promise<string> {
-    const initResponse = await fetch(`${this.baseUrl}/api/v1/run/${this.flowId}?stream=true`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input_value: message })
-    });
-
-    if (!initResponse.ok) {
-      throw new Error(`HTTP ${initResponse.status}`);
+  async callAgent(agentName: string, message: string): Promise<string> {
+    // Check if this agent should use local bridge
+    const agentConfig = AGENT_CONFIG[agentName as AgentName];
+    if (agentConfig === 'local') {
+      // Check if we're in a server environment
+      if (typeof window === 'undefined') {
+        if (!this.localBridge) {
+          const { LocalAgentBridge } = await import('./agents/local-agent-bridge');
+          this.localBridge = new LocalAgentBridge();
+        }
+        return await this.localBridge.callAgent(agentName, message);
+      } else {
+        // Fallback for client-side - shouldn't happen in server actions
+        throw new Error('Local agents can only run on server side');
+      }
     }
-
-    const initData = await initResponse.json();
-    const streamUrl = initData.outputs?.[0]?.outputs?.[0]?.artifacts?.stream_url;
     
-    if (!streamUrl) {
-      throw new Error('No stream URL');
-    }
+    // Use MCP for agents configured for MCP (like analyst)
+    return await this.tryMCPClient(agentName, message);
+  }
 
-    return await this.streamResponse(streamUrl, initData.session_id);
+  private async tryLangflowStreaming(message: string): Promise<string> {
+    try {
+      console.log('Attempting actual LangFlow streaming...');
+      
+      const flow = this.langflowClient.flow(this.flowId);
+      const stream = await flow.stream({
+        inputs: {
+          input_value: message
+        }
+      } as any);
+      
+      console.log('Stream object:', stream);
+      let fullResponse = '';
+      let chunkCount = 0;
+      
+      // Actually stream the response
+      for await (const chunk of stream as any) {
+        chunkCount++;
+        console.log(`Chunk ${chunkCount}:`, chunk);
+        
+        // Handle different chunk formats
+        if (chunk?.outputs?.[0]?.outputs?.[0]?.results?.message?.text) {
+          fullResponse += chunk.outputs[0].outputs[0].results.message.text;
+        } else if (chunk?.chunk) {
+          fullResponse += chunk.chunk;
+        } else if (chunk?.text) {
+          fullResponse += chunk.text;
+        } else if (typeof chunk === 'string') {
+          fullResponse += chunk;
+        }
+      }
+      
+      console.log(`Streamed ${chunkCount} chunks, total length: ${fullResponse.length}`);
+      return fullResponse || 'No response from stream';
+    } catch (error: any) {
+      console.error('LangFlow streaming error:', error);
+      throw error;
+    }
   }
 
   private async tryMCPClient(agentName: string, message: string): Promise<string> {
     try {
       const client = await this.connectMCP();
+      
+      // Append hidden length limit instruction
+      //const enhancedMessage = `${message} .Strictly limit the Output to have less than 2001 characters, while ensuring all crucial details are conveyed`;
+      const enhancedMessage = message;
+      
       const result = await client.callTool({
         name: `${agentName}_agent`,
-        arguments: { input_value: message }
+        arguments: { input_value: enhancedMessage }
       });
-      return result.content?.[1]?.text || result.content?.[0]?.text || 'No response from MCP agent';
-    } catch (error) {
-      throw new Error(`MCP client failed: ${error.message}`);
+      
+      return (result.content as any)?.[1]?.text || (result.content as any)?.[0]?.text || 'No response from MCP agent';
+    } catch (error: any) {
+      throw new Error(`MCP client failed: ${error?.message || error}`);
     }
   }
 
@@ -72,53 +116,17 @@ export class MCPBridge {
     return this.mcpClient;
   }
 
-  private async streamResponse(streamUrl: string, sessionId: string): Promise<string> {
-    // Build full stream URL (matching reference code)
-    const fullStreamUrl = `${this.baseUrl}${streamUrl}`;
-    const params = new URLSearchParams({ session_id: sessionId });
-    
-    let fullResponse = '';
-
-    try {
-      const response = await fetch(`${fullStreamUrl}?${params}`);
-      
-      if (!response.ok) {
-        throw new Error(`Stream HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No response body reader available');
-      }
-
-      const decoder = new TextDecoder();
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-        
-        for (const line of lines) {
-          if (line.trim() && line.startsWith('data: ')) {
-            try {
-              const jsonStr = line.slice(6).trim();
-              const data = JSON.parse(jsonStr);
-              if (data.chunk) {
-                fullResponse += data.chunk;
-              }
-            } catch (e) {
-              // Skip invalid JSON lines
-            }
-          }
-        }
-      }
-      
-      return fullResponse || 'No response received from stream';
-    } catch (error) {
-      console.error('Streaming error:', error);
-      throw error;
+  async cleanup(): Promise<void> {
+    if (this.localBridge) {
+      await this.localBridge.cleanup();
+    }
+    if (this.mcpClient) {
+      await this.mcpClient.close();
+      this.mcpClient = null;
+    }
+    if (this.mcpTransport) {
+      await this.mcpTransport.close();
+      this.mcpTransport = null;
     }
   }
 }
