@@ -28,7 +28,7 @@ export function AgentSelector({ agents, selectedAgent, onSelectAgent, showTitle 
               selectedAgent?.id === agent.id ? 'border-primary shadow-[0_0_15px_0px_hsl(var(--primary)/0.5)]' : 'border-primary/20'
             )}
           >
-            <CardContent className="p-4 flex flex-col items-center gap-3">
+            <CardContent className="p-4 flex flex-col items-center justify-center">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-background flex items-center justify-center border-2 border-primary/20 group-hover:border-primary transition-all">
                 <Image
                   src={`https://placehold.co/100x100/1a1a2e/be29ec.gif?text=${agent.avatarLabel}`}
@@ -39,7 +39,6 @@ export function AgentSelector({ agents, selectedAgent, onSelectAgent, showTitle 
                   data-ai-hint="futuristic robot"
                 />
               </div>
-              <p className="font-semibold text-center text-sm">{agent.name}</p>
             </CardContent>
           </Card>
         ))}
