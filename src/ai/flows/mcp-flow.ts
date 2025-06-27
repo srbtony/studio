@@ -46,9 +46,10 @@ const mcpChatFlow = ai.defineFlow(
         headers: {
           'Content-Type': 'application/json',
         },
-        // The mcp-proxy expects a JSON body with a 'message' key.
+        // The mcp-proxy likely expects the payload in a JSON body with an 'input' key,
+        // which is standard for LangFlow projects.
         body: JSON.stringify({
-            message: finalMessage,
+            input: finalMessage,
         }),
       });
 
@@ -63,7 +64,13 @@ const mcpChatFlow = ai.defineFlow(
       const data = await response.json();
 
       // The langflow mcp-proxy can return the response in different structures.
-      // We'll check for a few common patterns to be safe.
+      // We'll check for a few common patterns to be safe, prioritizing the most likely ones.
+      if (data && data.result && data.result.message && typeof data.result.message.text === 'string') {
+        return { response: data.result.message.text };
+      }
+      if (data && data.result && typeof data.result.output === 'string') {
+        return { response: data.result.output };
+      }
       if (data && typeof data.response === 'string') {
         return { response: data.response };
       }
@@ -72,9 +79,6 @@ const mcpChatFlow = ai.defineFlow(
       }
       if (data && data.result && typeof data.result.message === 'string') {
          return { response: data.result.message };
-      }
-       if (data && data.result && typeof data.result.output === 'string') {
-        return { response: data.result.output };
       }
       
       // Fallback if the response format is totally unexpected
