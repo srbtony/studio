@@ -14,9 +14,12 @@ import {
   Code,
   Send,
   User,
+  Loader,
 } from 'lucide-react';
 import { UnityIcon } from '@/components/icons/unity-icon';
 import { cn } from '@/lib/utils';
+import { mcpChat } from '@/ai/flows/mcp-flow';
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   id: number;
@@ -40,6 +43,8 @@ interface ChatViewProps {
 export function ChatView({ selectedAgent }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,15 +61,45 @@ export function ChatView({ selectedAgent }: ChatViewProps) {
     }
   }, [messages]);
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() === '') return;
+    if (input.trim() === '' || isLoading) return;
 
     const userMessage: Message = { id: Date.now(), text: input, sender: 'user' };
-    const agentResponse: Message = { id: Date.now() + 1, text: `This is a simulated response from the ${selectedAgent.name} about "${input}". I am processing your request and will provide a detailed analysis shortly.`, sender: selectedAgent.id };
-    
-    setMessages(prev => [...prev, userMessage, agentResponse]);
+    setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
+    setIsLoading(true);
+
+    try {
+      const result = await mcpChat({
+        agentId: selectedAgent.id,
+        message: currentInput,
+      });
+
+      const agentResponse: Message = { 
+        id: Date.now() + 1, 
+        text: result.response, 
+        sender: selectedAgent.id 
+      };
+      
+      setMessages(prev => [...prev, agentResponse]);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "An error occurred",
+        description: "Failed to get a response from the agent.",
+      });
+      const errorMessage: Message = {
+        id: Date.now() + 1,
+        text: "I'm sorry, but I encountered an error. Please try again later.",
+        sender: selectedAgent.id,
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -102,6 +137,21 @@ export function ChatView({ selectedAgent }: ChatViewProps) {
               </div>
             )
           })}
+          {isLoading && (
+            <div className="flex items-end gap-2 justify-start">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className={agentDetails[selectedAgent.id]?.color || 'bg-secondary'}>
+                  <Loader className="h-5 w-5 text-primary animate-spin" />
+                </AvatarFallback>
+              </Avatar>
+              <div className={cn(
+                  'max-w-md lg:max-w-2xl p-3 rounded-lg shadow-md',
+                  `${agentDetails[selectedAgent.id]?.color || 'bg-secondary'} text-white/90 rounded-bl-none`
+                )}>
+                  <p className="text-sm italic">Thinking...</p>
+              </div>
+            </div>
+          )}
         </div>
       </ScrollArea>
       <form onSubmit={handleSend} className="p-4 border-t border-primary/10 flex items-center gap-4">
@@ -110,9 +160,10 @@ export function ChatView({ selectedAgent }: ChatViewProps) {
           onChange={(e) => setInput(e.target.value)}
           placeholder={`Chat with the ${selectedAgent.name}...`}
           className="flex-1 bg-background focus:ring-accent"
+          disabled={isLoading}
         />
-        <Button type="submit" size="icon" className="bg-primary hover:bg-primary/80 shrink-0">
-          <Send className="h-5 w-5" />
+        <Button type="submit" size="icon" className="bg-primary hover:bg-primary/80 shrink-0" disabled={isLoading}>
+          {isLoading ? <Loader className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
           <span className="sr-only">Send</span>
         </Button>
       </form>
