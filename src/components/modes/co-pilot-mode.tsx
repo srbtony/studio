@@ -1,33 +1,41 @@
 'use client';
 
-import { useState } from 'react';
-import { AgentSelector, type Agent } from '@/components/co-pilot/agent-selector';
+import { useState, useEffect } from 'react';
+import { AgentSelector } from '@/components/co-pilot/agent-selector';
 import { ChatView } from '@/components/co-pilot/chat-view';
-import {
-  BrainCircuit,
-  ClipboardList,
-  Palette,
-  Accessibility,
-  Code,
-} from 'lucide-react';
-import { UnityIcon } from '@/components/icons/unity-icon';
-
-
-const agents: Agent[] = [
-    { id: 'analyst', name: 'Analyst', icon: BrainCircuit, color: 'bg-cyan-900/40', avatarLabel: 'A' },
-    { id: 'product-manager', name: 'Product Manager', icon: ClipboardList, color: 'bg-green-900/40', avatarLabel: 'PM' },
-    { id: 'designer', name: 'Designer', icon: Palette, color: 'bg-yellow-900/40', avatarLabel: 'D' },
-    { id: 'ux-designer', name: 'UX Designer', icon: Accessibility, color: 'bg-blue-900/40', avatarLabel: 'UX' },
-    { id: 'software-developer', name: 'Software Developer', icon: Code, color: 'bg-orange-900/40', avatarLabel: 'S' },
-    { id: 'unity-developer', name: 'Unity Developer', icon: UnityIcon, color: 'bg-gray-700/40', avatarLabel: 'U' },
-];
+import { agents, defaultPrimaryColorHSL, type Agent } from '@/lib/agents';
+import { ActiveAgentDisplay } from '@/components/co-pilot/active-agent-display';
 
 export function CoPilotMode() {
-    const [selectedAgent, setSelectedAgent] = useState<Agent>(agents[0]);
+    const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+
+    useEffect(() => {
+        const root = document.documentElement;
+        
+        if (selectedAgent) {
+            root.style.setProperty('--primary', selectedAgent.primaryColorHSL);
+        } else {
+            // On initial load with no agent, ensure default color
+            root.style.setProperty('--primary', defaultPrimaryColorHSL);
+        }
+        
+        // Cleanup function to reset on unmount
+        return () => {
+             root.style.setProperty('--primary', defaultPrimaryColorHSL);
+        }
+    }, [selectedAgent]);
+    
+    if (!selectedAgent) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                <AgentSelector agents={agents} onSelectAgent={setSelectedAgent} />
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col gap-6">
-            <AgentSelector agents={agents} selectedAgent={selectedAgent} onSelectAgent={setSelectedAgent} />
+            <ActiveAgentDisplay selectedAgent={selectedAgent} onSelectAgent={setSelectedAgent} />
             <ChatView selectedAgent={selectedAgent} agents={agents} />
         </div>
     );

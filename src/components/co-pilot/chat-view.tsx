@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, type FormEvent } from 'react';
-import type { Agent } from './agent-selector';
+import type { Agent } from '@/lib/agents';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -42,6 +42,7 @@ export function ChatView({ selectedAgent, agents }: ChatViewProps) {
   };
   
   useEffect(() => {
+    // Clear messages and show initial greeting from new agent
     setMessages([{ id: Date.now(), text: `Hello! I'm the ${selectedAgent.name}. How can I assist you today?`, sender: selectedAgent.id }]);
     setInput('');
     setEditingMessage(null);
@@ -156,7 +157,7 @@ export function ChatView({ selectedAgent, agents }: ChatViewProps) {
               <div key={message.id} className={cn('flex items-end gap-2', message.sender === 'user' ? 'justify-end' : 'justify-start')}>
                 {message.sender !== 'user' && agentDetail && AgentIcon && (
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className={agentDetail.color}>
+                    <AvatarFallback className={cn(agentDetail.color, 'border border-primary/50')}>
                       <AgentIcon className="h-5 w-5 text-primary" />
                     </AvatarFallback>
                   </Avatar>
@@ -193,12 +194,12 @@ export function ChatView({ selectedAgent, agents }: ChatViewProps) {
           })}
           {isLoading && (
             <div className="flex items-end gap-2 justify-start">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className={getAgentDetails(selectedAgent.id)?.color || 'bg-secondary'}>
+               <Avatar className="h-8 w-8">
+                <AvatarFallback className={cn(selectedAgent.color, 'border border-primary/50')}>
                   <Loader className="h-5 w-5 text-primary animate-spin" />
                 </AvatarFallback>
               </Avatar>
-              <div className={cn('max-w-md lg:max-w-2xl p-3 rounded-lg shadow-md', `${getAgentDetails(selectedAgent.id)?.color || 'bg-secondary'} text-white/90 rounded-bl-none`)}>
+              <div className={cn('max-w-md lg:max-w-2xl p-3 rounded-lg shadow-md', `${selectedAgent.color || 'bg-secondary'} text-white/90 rounded-bl-none`)}>
                   <p className="text-sm italic">Thinking...</p>
               </div>
             </div>
