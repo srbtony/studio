@@ -26,10 +26,9 @@ export async function mcpChat(input: McpChatInput): Promise<McpChatOutput> {
   return mcpChatFlow(input);
 }
 
-// NOTE: This URL is based on the provided configuration.
-// The '/sse' suffix is removed, and a '/chat' endpoint is assumed for POST requests.
+// The URL for the MCP proxy, ending in /sse as per the user's configuration.
 const MCP_SERVER_URL =
-  'http://127.0.0.1:7860/api/v1/mcp/project/5b174466-3968-481d-8f9b-77ddcc16da00/chat';
+  'http://127.0.0.1:7860/api/v1/mcp/project/5b174466-3968-481d-8f9b-77ddcc16da00/sse';
 
 const mcpChatFlow = ai.defineFlow(
   {
@@ -46,8 +45,9 @@ const mcpChatFlow = ai.defineFlow(
         headers: {
           'Content-Type': 'application/json',
         },
+        // The mcp-proxy might expect a simpler body with just the message.
+        // The agent information is already prepended to the `finalMessage`.
         body: JSON.stringify({
-            agentId: input.agentId,
             message: finalMessage,
         }),
       });
@@ -62,12 +62,19 @@ const mcpChatFlow = ai.defineFlow(
       
       const data = await response.json();
 
-      // Assuming the server returns a JSON with a 'response' field.
-      if (typeof data.response === 'string') {
+      // The langflow mcp-proxy can return the response in different structures.
+      // We'll check for a few common patterns to be safe.
+      if (data && typeof data.response === 'string') {
         return { response: data.response };
       }
+      if (data && data.message && typeof data.message.text === 'string') {
+        return { response: data.message.text };
+      }
+      if (data && data.result && typeof data.result.message === 'string') {
+         return { response: data.result.message };
+      }
       
-      // Fallback if the response format is unexpected
+      // Fallback if the response format is totally unexpected
       return { response: JSON.stringify(data) };
 
     } catch (error) {
