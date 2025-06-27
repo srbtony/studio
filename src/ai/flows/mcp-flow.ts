@@ -26,9 +26,10 @@ export async function mcpChat(input: McpChatInput): Promise<McpChatOutput> {
   return mcpChatFlow(input);
 }
 
-// The URL for the MCP proxy, ending in /sse as per the user's configuration.
-const MCP_SERVER_URL =
-  'http://127.0.0.1:7860/api/v1/mcp/project/5b174466-3968-481d-8f9b-77ddcc16da00/sse';
+// The URL for the MCP proxy. The `uvx mcp-proxy` command starts a local server,
+// typically on this address, which then connects to the upstream SSE endpoint.
+// Your app should talk to this proxy URL, not the direct SSE URL.
+const MCP_PROXY_URL = 'http://127.0.0.1:8001/mcp';
 
 const mcpChatFlow = ai.defineFlow(
   {
@@ -40,13 +41,12 @@ const mcpChatFlow = ai.defineFlow(
     const finalMessage = `Requesting ${input.agentName} Agent to answer the following ... ${input.message}`;
     
     try {
-      const response = await fetch(MCP_SERVER_URL, {
+      const response = await fetch(MCP_PROXY_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // The mcp-proxy might expect a simpler body with just the message.
-        // The agent information is already prepended to the `finalMessage`.
+        // The mcp-proxy expects a JSON body with a 'message' key.
         body: JSON.stringify({
             message: finalMessage,
         }),
@@ -54,9 +54,9 @@ const mcpChatFlow = ai.defineFlow(
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('MCP Server Error:', errorText);
+        console.error('MCP Proxy Server Error:', errorText);
         throw new Error(
-          `MCP Server responded with status ${response.status}: ${errorText}`
+          `MCP Proxy Server responded with status ${response.status}: ${errorText}`
         );
       }
       
@@ -73,15 +73,19 @@ const mcpChatFlow = ai.defineFlow(
       if (data && data.result && typeof data.result.message === 'string') {
          return { response: data.result.message };
       }
+       if (data && data.result && typeof data.result.output === 'string') {
+        return { response: data.result.output };
+      }
       
       // Fallback if the response format is totally unexpected
+      console.warn('Unexpected MCP response format:', data);
       return { response: JSON.stringify(data) };
 
     } catch (error) {
-      console.error('Failed to communicate with MCP server', error);
+      console.error('Failed to communicate with MCP proxy server', error);
       return {
         response:
-          "Sorry, I couldn't connect to the agent. Please ensure the MCP server is running and accessible.",
+          "Sorry, I couldn't connect to the agent. Please ensure the MCP proxy server (uvx mcp-proxy) is running and accessible at " + MCP_PROXY_URL,
       };
     }
   }
