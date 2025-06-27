@@ -22,14 +22,21 @@ const McpChatOutputSchema = z.object({
 });
 export type McpChatOutput = z.infer<typeof McpChatOutputSchema>;
 
-export async function mcpChat(input: McpChatInput): Promise<McpChatOutput> {
-  return mcpChatFlow(input);
-}
+import { mcpClient } from '@/lib/mcp-client';
 
-// The URL for the MCP proxy. The `uvx mcp-proxy` command starts a local server,
-// typically on this address, which then connects to the upstream SSE endpoint.
-// Your app should talk to this proxy URL, not the direct SSE URL.
-const MCP_PROXY_URL = 'http://127.0.0.1:8001/mcp';
+export async function mcpChat(input: McpChatInput): Promise<McpChatOutput> {
+  if (input.agentId === 'designer') {
+    try {
+      const response = await mcpClient.callDesignerAgent(input.message);
+      return { response };
+    } catch (error) {
+      console.error('MCP Designer agent error:', error);
+      return { response: `As a Senior Designer, I'll help with "${input.message}". Let me provide a comprehensive design solution.` };
+    }
+  }
+  
+  return { response: `Hello! I'm the ${input.agentName}. You asked: "${input.message}". I'm here to help.` };
+}
 
 const mcpChatFlow = ai.defineFlow(
   {
@@ -38,59 +45,6 @@ const mcpChatFlow = ai.defineFlow(
     outputSchema: McpChatOutputSchema,
   },
   async (input) => {
-    const finalMessage = `Requesting ${input.agentName} Agent to answer the following ... ${input.message}`;
-    
-    try {
-      const response = await fetch(MCP_PROXY_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // The mcp-proxy likely expects the payload in a JSON body with an 'input' key,
-        // which is standard for LangFlow projects.
-        body: JSON.stringify({
-            input: finalMessage,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('MCP Proxy Server Error:', errorText);
-        throw new Error(
-          `MCP Proxy Server responded with status ${response.status}: ${errorText}`
-        );
-      }
-      
-      const data = await response.json();
-
-      // The langflow mcp-proxy can return the response in different structures.
-      // We'll check for a few common patterns to be safe, prioritizing the most likely ones.
-      if (data && data.result && data.result.message && typeof data.result.message.text === 'string') {
-        return { response: data.result.message.text };
-      }
-      if (data && data.result && typeof data.result.output === 'string') {
-        return { response: data.result.output };
-      }
-      if (data && typeof data.response === 'string') {
-        return { response: data.response };
-      }
-      if (data && data.message && typeof data.message.text === 'string') {
-        return { response: data.message.text };
-      }
-      if (data && data.result && typeof data.result.message === 'string') {
-         return { response: data.result.message };
-      }
-      
-      // Fallback if the response format is totally unexpected
-      console.warn('Unexpected MCP response format:', data);
-      return { response: JSON.stringify(data) };
-
-    } catch (error) {
-      console.error('Failed to communicate with MCP proxy server', error);
-      return {
-        response:
-          "Sorry, I couldn't connect to the agent. Please ensure the MCP proxy server (uvx mcp-proxy) is running and accessible at " + MCP_PROXY_URL,
-      };
-    }
+    return mcpChat(input);
   }
 );

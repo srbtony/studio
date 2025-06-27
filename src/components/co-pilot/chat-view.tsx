@@ -162,7 +162,7 @@ export function ChatView({ selectedAgent, agents }: ChatViewProps) {
                     </AvatarFallback>
                   </Avatar>
                 )}
-                <div className={cn('max-w-md lg:max-w-2xl p-3 rounded-lg shadow-md', message.sender === 'user' ? 'bg-[#2a2a3e] text-white rounded-br-none' : `${agentDetail?.color || 'bg-secondary'} text-white/90 rounded-bl-none`)}>
+                <div className={cn('max-w-full p-3 rounded-lg shadow-md', message.sender === 'user' ? 'bg-[#2a2a3e] text-white rounded-br-none' : `${agentDetail?.color || 'bg-secondary'} text-white/90 rounded-bl-none`)}>
                   <p className="text-sm whitespace-pre-wrap">{message.text}</p>
                   {message.sender !== 'user' && (
                     <div className="flex items-center gap-2 mt-2 border-t border-white/10 pt-2">
