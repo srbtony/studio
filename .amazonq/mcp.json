@@ -1,3 +1,20 @@
 {
-  "mcpServers": {}
+  "mcpServers": {
+    "ProductManagerAgent": {
+      "command": "uvx",
+      "timeout": 60000,
+      "args": [
+        "mcp-proxy",
+        "http://127.0.0.1:7860/api/v1/mcp/project/4cbb4842-0670-40a4-92fd-7e7b44e954ed/sse"
+      ]
+    },
+    "Analyst Agent": {
+      "command": "uvx",
+      "timeout": 60000,
+      "args": [
+        "mcp-proxy",
+        "http://127.0.0.1:7860/api/v1/mcp/project/a6172e39-d247-4118-89b6-c3f50a6a3770/sse"
+      ]
+    }
+  }
 }

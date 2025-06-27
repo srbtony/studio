@@ -1,9 +1,11 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { MCPBridge } from './mcp-bridge';
 
 class MCPClient {
   private client: Client | null = null;
   private transport: StdioClientTransport | null = null;
+  private bridge = new MCPBridge();
 
   async connect() {
     if (this.client) return this.client;
@@ -19,7 +21,12 @@ class MCPClient {
         name: 'studio-client',
         version: '1.0.0'
       }, {
-        capabilities: {}
+        capabilities: {
+          tools: {},
+          resources: {},
+          prompts: {},
+          logging: {}
+        }
       });
 
       await this.client.connect(this.transport);
@@ -32,19 +39,27 @@ class MCPClient {
 
   async callDesignerAgent(message: string): Promise<string> {
     try {
-      const client = await this.connect();
-      
-      const result = await client.callTool({
-        name: 'designer_agent',
-        arguments: {
-          input_value: message
-        }
-      });
-
-      // Return the actual response content (index 1 contains the agent response)
-      return result.content?.[1]?.text || result.content?.[0]?.text || 'No response from designer agent';
+      return await this.bridge.callAgent('designer', message);
     } catch (error) {
       console.error('Designer agent call failed:', error);
+      throw error;
+    }
+  }
+
+  async callProductManagerAgent(message: string): Promise<string> {
+    try {
+      return await this.bridge.callAgent('product_manager', message);
+    } catch (error) {
+      console.error('Product Manager agent call failed:', error);
+      throw error;
+    }
+  }
+
+  async callAnalystAgent(message: string): Promise<string> {
+    try {
+      return await this.bridge.callAgent('analyst', message);
+    } catch (error) {
+      console.error('Analyst agent call failed:', error);
       throw error;
     }
   }

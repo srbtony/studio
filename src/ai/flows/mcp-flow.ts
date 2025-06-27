@@ -25,17 +25,28 @@ export type McpChatOutput = z.infer<typeof McpChatOutputSchema>;
 import { mcpClient } from '@/lib/mcp-client';
 
 export async function mcpChat(input: McpChatInput): Promise<McpChatOutput> {
-  if (input.agentId === 'designer') {
-    try {
-      const response = await mcpClient.callDesignerAgent(input.message);
-      return { response };
-    } catch (error) {
-      console.error('MCP Designer agent error:', error);
-      return { response: `As a Senior Designer, I'll help with "${input.message}". Let me provide a comprehensive design solution.` };
+  try {
+    let response: string;
+    
+    switch (input.agentId) {
+      case 'designer':
+        response = await mcpClient.callDesignerAgent(input.message);
+        break;
+      case 'product-manager':
+        response = await mcpClient.callProductManagerAgent(input.message);
+        break;
+      case 'analyst':
+        response = await mcpClient.callAnalystAgent(input.message);
+        break;
+      default:
+        response = `Hello! I'm the ${input.agentName}. You asked: "${input.message}". I'm here to help.`;
     }
+    
+    return { response };
+  } catch (error) {
+    console.error(`MCP ${input.agentName} agent error:`, error);
+    return { response: `As a ${input.agentName}, I'll help with "${input.message}". Let me provide assistance.` };
   }
-  
-  return { response: `Hello! I'm the ${input.agentName}. You asked: "${input.message}". I'm here to help.` };
 }
 
 const mcpChatFlow = ai.defineFlow(
