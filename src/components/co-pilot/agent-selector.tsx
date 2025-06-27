@@ -29,12 +29,12 @@ export function AgentSelector({ agents, selectedAgent, onSelectAgent, showTitle 
             )}
           >
             <CardContent className="p-4 flex flex-col items-center justify-center">
-              <div className="w-24 h-24 rounded-full overflow-hidden bg-background flex items-center justify-center border-2 border-primary/20 group-hover:border-primary transition-all">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-background flex items-center justify-center border-2 border-primary/20 group-hover:border-primary transition-all">
                 <Image
-                  src={`https://placehold.co/100x100/1a1a2e/be29ec.gif?text=${agent.avatarLabel}`}
+                  src={`https://placehold.co/64x64/1a1a2e/be29ec.gif?text=${agent.avatarLabel}`}
                   alt={`${agent.name} animated portrait`}
-                  width={96}
-                  height={96}
+                  width={64}
+                  height={64}
                   className="rounded-full object-cover group-hover:scale-110 transition-transform duration-300"
                   data-ai-hint="futuristic robot"
                 />
