@@ -4,11 +4,31 @@ import { useState } from 'react';
 import { Header } from '@/components/layout/header';
 import { CoPilotMode } from '@/components/modes/co-pilot-mode';
 import { AutopilotMode } from '@/components/modes/autopilot-mode';
+import { LoadingAnimation } from '@/components/loading-animation';
 
 type Mode = 'co-pilot' | 'autopilot';
 
 export default function Home() {
   const [mode, setMode] = useState<Mode>('co-pilot');
+  const [isLoading, setIsLoading] = useState(true);
+
+  if (isLoading) {
+    return (
+      <LoadingAnimation onComplete={() => setIsLoading(false)}>
+        <div className="flex flex-col min-h-screen bg-background text-foreground font-body">
+          <main className="flex-1 container mx-auto p-4 md:p-8 pt-20">
+            <div className="bg-background/80 backdrop-blur-sm rounded-xl border border-primary/20 shadow-[0_0_25px_0_hsl(var(--primary)/0.2)]">
+              <Header activeMode={mode} setMode={setMode} />
+              <div className="p-4 md:p-6 min-h-[80vh]">
+                {mode === 'co-pilot' && <CoPilotMode />}
+                {mode === 'autopilot' && <AutopilotMode />}
+              </div>
+            </div>
+          </main>
+        </div>
+      </LoadingAnimation>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground font-body">
