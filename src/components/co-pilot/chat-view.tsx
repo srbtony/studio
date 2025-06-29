@@ -1,31 +1,38 @@
 'use client';
 
-import { useState, useRef, useEffect, type FormEvent } from 'react';
+import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react';
 import type { Agent } from '@/lib/agents';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Loader, Send, User } from 'lucide-react';
+import { Loader, Send, User, Forward } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { mcpChat } from '@/ai/flows/mcp-flow';
 import { useToast } from "@/hooks/use-toast";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Message {
   id: number;
   text: string;
   sender: 'user' | string; // agent.id or 'user'
+  isForwarded?: boolean;
+  forwardedFrom?: string; // agent.id of source agent
 }
 
 interface ChatViewProps {
   selectedAgent: Agent;
   agents: Agent[];
+  onSwitchAgent?: (agent: Agent, message?: string, sourceAgent?: Agent) => void;
+  pendingMessage?: string | null;
+  pendingSourceAgent?: Agent | null;
+  onPendingMessageSent?: () => void;
 }
 
-export function ChatView({ selectedAgent, agents }: ChatViewProps) {
+export function ChatView({ selectedAgent, agents, onSwitchAgent, pendingMessage, pendingSourceAgent, onPendingMessageSent }: ChatViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -48,6 +55,53 @@ export function ChatView({ selectedAgent, agents }: ChatViewProps) {
     setEditingMessage(null);
   }, [selectedAgent]);
   
+  // Separate effect for handling pending messages
+  useEffect(() => {
+    if (pendingMessage && selectedAgent) {
+      // Add clean forwarded message with metadata
+      const forwardedMessage: Message = {
+        id: Date.now(),
+        text: pendingMessage,
+        sender: 'user',
+        isForwarded: true,
+        forwardedFrom: pendingSourceAgent?.id
+      };
+      setMessages(prev => [...prev, forwardedMessage]);
+      
+      const timer = setTimeout(async () => {
+        // Send to agent but don't add duplicate user message
+        setIsLoading(true);
+        try {
+          const result = await mcpChat({
+            agentId: selectedAgent.id,
+            agentName: selectedAgent.name,
+            message: pendingMessage,
+          });
+          
+          const agentResponse: Message = { 
+            id: Date.now() + 1, 
+            text: result.response, 
+            sender: selectedAgent.id
+          };
+          
+          setMessages(prev => [...prev, agentResponse]);
+        } catch (error) {
+          console.error(error);
+          toast({
+            variant: "destructive",
+            title: "An error occurred",
+            description: "Failed to get a response from the agent.",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+        onPendingMessageSent?.();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [pendingMessage, selectedAgent, pendingSourceAgent, onPendingMessageSent, toast]);
+  
   useEffect(() => {
     if (scrollAreaRef.current) {
         const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -65,7 +119,7 @@ export function ChatView({ selectedAgent, agents }: ChatViewProps) {
     }
   }, [editingMessage, agents]);
 
-  const doSend = async (messageText: string, agent: Agent) => {
+  const doSend = useCallback(async (messageText: string, agent: Agent) => {
     if (messageText.trim() === '' || isLoading) return;
     
     setIsLoading(true);
@@ -106,7 +160,7 @@ export function ChatView({ selectedAgent, agents }: ChatViewProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedAgent, toast]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -115,14 +169,19 @@ export function ChatView({ selectedAgent, agents }: ChatViewProps) {
   };
 
   const handleForward = async (originalMessageText: string, targetAgent: Agent) => {
-    const infoMessage: Message = { 
-       id: Date.now(), 
-       text: `You forwarded a message to ${targetAgent.name}.`, 
-       sender: 'user'
-    };
-    setMessages(prev => [...prev, infoMessage]);
-
-    await doSend(originalMessageText, targetAgent);
+    if (onSwitchAgent) {
+      // Switch to target agent's tab and auto-send message with source info
+      onSwitchAgent(targetAgent, originalMessageText, selectedAgent);
+    } else {
+      // Fallback to current behavior if no switch handler
+      const infoMessage: Message = { 
+         id: Date.now(), 
+         text: `You forwarded a message to ${targetAgent.name}.`, 
+         sender: 'user'
+      };
+      setMessages(prev => [...prev, infoMessage]);
+      await doSend(originalMessageText, targetAgent);
+    }
   };
 
   const handleEditAndForward = async (e: FormEvent) => {
@@ -132,35 +191,50 @@ export function ChatView({ selectedAgent, agents }: ChatViewProps) {
     const targetAgent = getAgentDetails(editTargetAgentId);
     if (!targetAgent) return;
 
-    const infoMessage: Message = { 
-        id: Date.now(), 
-        text: `You are editing and forwarding a message to ${targetAgent.name}...`, 
-        sender: 'user'
-    };
-    setMessages(prev => [...prev, infoMessage]);
-
-    await doSend(editText, targetAgent);
-    
-    setEditingMessage(null);
-    setEditText('');
-    setEditTargetAgentId('');
+    if (onSwitchAgent) {
+      // Switch to target agent's tab and auto-send edited message with source info
+      onSwitchAgent(targetAgent, editText, selectedAgent);
+      setEditingMessage(null);
+      setEditText('');
+      setEditTargetAgentId('');
+    } else {
+      // Fallback to current behavior if no switch handler
+      const infoMessage: Message = { 
+          id: Date.now(), 
+          text: `You are editing and forwarding a message to ${targetAgent.name}...`, 
+          sender: 'user'
+      };
+      setMessages(prev => [...prev, infoMessage]);
+      await doSend(editText, targetAgent);
+      setEditingMessage(null);
+      setEditText('');
+      setEditTargetAgentId('');
+    }
   };
 
   return (
-    <div className="flex flex-col h-[70vh] bg-secondary/30 rounded-lg border border-primary/10">
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        <div className="flex flex-col gap-4">
+    <TooltipProvider>
+      <div className="flex flex-col h-[70vh] bg-secondary/30 rounded-lg border border-primary/10">
+        <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+          <div className="flex flex-col gap-4">
           {messages.map((message) => {
             const agentDetail = getAgentDetails(message.sender);
             const AgentIcon = agentDetail?.icon;
             return (
               <div key={message.id} className={cn('flex items-end gap-2', message.sender === 'user' ? 'justify-end' : 'justify-start')}>
                 {message.sender !== 'user' && agentDetail && AgentIcon && (
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className={cn(agentDetail.color, 'border border-primary/50')}>
-                      <AgentIcon className="h-5 w-5 text-primary" />
-                    </AvatarFallback>
-                  </Avatar>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Avatar className="h-8 w-8 cursor-help">
+                        <AvatarFallback className={cn(agentDetail.color, 'border border-primary/50')}>
+                          <AgentIcon className="h-5 w-5 text-primary" />
+                        </AvatarFallback>
+                      </Avatar>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{agentDetail.name}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 )}
                 <div className={cn('max-w-full p-3 rounded-lg shadow-md', message.sender === 'user' ? 'bg-[#2a2a3e] text-white rounded-br-none' : `${agentDetail?.color || 'bg-secondary'} text-white/90 rounded-bl-none`)}>
                   <p className="text-sm whitespace-pre-wrap">{message.text}</p>
@@ -183,11 +257,35 @@ export function ChatView({ selectedAgent, agents }: ChatViewProps) {
                   )}
                 </div>
                 {message.sender === 'user' && (
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-secondary">
-                      <User className="h-5 w-5 text-accent" />
-                    </AvatarFallback>
-                  </Avatar>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Avatar className="h-8 w-8 cursor-help">
+                        <AvatarFallback className={cn(
+                          message.isForwarded && message.forwardedFrom 
+                            ? getAgentDetails(message.forwardedFrom)?.color || 'bg-secondary'
+                            : 'bg-secondary'
+                        )}>
+                          {message.isForwarded && message.forwardedFrom ? (
+                            (() => {
+                              const sourceAgent = getAgentDetails(message.forwardedFrom);
+                              const SourceIcon = sourceAgent?.icon;
+                              return SourceIcon ? <SourceIcon className="h-5 w-5 text-primary" /> : <User className="h-5 w-5 text-accent" />;
+                            })()
+                          ) : (
+                            <User className="h-5 w-5 text-accent" />
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        {message.isForwarded && message.forwardedFrom 
+                          ? `Forwarded from ${getAgentDetails(message.forwardedFrom)?.name}`
+                          : 'You'
+                        }
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             )
@@ -204,8 +302,8 @@ export function ChatView({ selectedAgent, agents }: ChatViewProps) {
               </div>
             </div>
           )}
-        </div>
-      </ScrollArea>
+          </div>
+        </ScrollArea>
       
       {editingMessage && (
         <div ref={editViewRef} className="p-4 border-y border-primary/10 bg-background/50">
@@ -251,7 +349,8 @@ export function ChatView({ selectedAgent, agents }: ChatViewProps) {
           {isLoading ? <Loader className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
           <span className="sr-only">Send</span>
         </Button>
-      </form>
-    </div>
+        </form>
+      </div>
+    </TooltipProvider>
   );
 }

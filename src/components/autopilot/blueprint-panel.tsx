@@ -38,14 +38,14 @@ export function BlueprintPanel({ isScrumInitiated }: BlueprintPanelProps) {
     return (
         <Card className="h-full bg-secondary/30 border-primary/10">
             <CardHeader>
-                <CardTitle className="font-headline text-accent">Feature Blueprint</CardTitle>
-                <CardDescription>The final output document.</CardDescription>
+                <CardTitle className="font-headline text-accent">The Verdict</CardTitle>
+                <CardDescription>The final actionable.</CardDescription>
             </CardHeader>
             <CardContent>
                 <ScrollArea className="h-[65vh] pr-4">
                     {!isScrumInitiated ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground">
-                            <p>Initiate AI Scrum to generate blueprint.</p>
+                            <p>Initiate AI Scrum to generate verdict.</p>
                         </div>
                     ) : (
                         <div className="space-y-6">

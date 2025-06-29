@@ -10,22 +10,26 @@ interface BriefPanelProps {
 
 export function BriefPanel({ onInitiate }: BriefPanelProps) {
     return (
-        <Card className="h-full bg-secondary/30 border-primary/10">
+        <Card className="h-full bg-secondary/30 border-primary/10 flex flex-col">
             <CardHeader>
-                <CardTitle className="font-headline text-accent">Start New Feature</CardTitle>
-                <CardDescription>Define the goal for the AI team.</CardDescription>
+                <CardTitle className="font-headline text-accent">Focus Area</CardTitle>
+                <CardDescription>Define the focus area for the AI team.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onInitiate(); }}>
-                    <div className="space-y-2">
-                        <Label htmlFor="target-metric">Target Metric</Label>
-                        <Input id="target-metric" placeholder="e.g. Increase Day 7 Retention" defaultValue="Increase Day 7 Retention" className="bg-background" />
+            <CardContent className="flex-1 flex flex-col">
+                <form className="flex-1 flex flex-col" onSubmit={(e) => { e.preventDefault(); onInitiate(); }}>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="target-metric">The Target</Label>
+                            <Textarea id="target-metric" placeholder="e.g. Analyse short term player data and pain-points" defaultValue="Analyse short term player data and pain-points" className="bg-background min-h-[80px] resize-none" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="feature-brief">Brief</Label>
+                            <Textarea id="feature-brief" placeholder="Describe the task..." className="bg-background min-h-[300px] resize-none" defaultValue="Check last 7 days trend of all the important metrics and analyse CS tickets from players to identify any issue. Discuss internally to figure out how to best address any potential issues or any areas of improvement."/>
+                        </div>
                     </div>
-                     <div className="space-y-2">
-                        <Label htmlFor="feature-brief">Brief</Label>
-                        <Textarea id="feature-brief" placeholder="Describe the feature..." className="bg-background min-h-[200px]" defaultValue="Design a new daily reward system to encourage users to log in every day."/>
+                    <div className="mt-6">
+                        <Button type="submit" className="w-full bg-primary hover:bg-primary/80 text-white font-semibold">Initiate AI Scrum</Button>
                     </div>
-                    <Button type="submit" className="w-full bg-primary hover:bg-primary/80 text-white font-semibold">Initiate AI Scrum</Button>
                 </form>
             </CardContent>
         </Card>
