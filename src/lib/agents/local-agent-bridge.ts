@@ -11,7 +11,7 @@ export class LocalAgentBridge implements AgentBridge {
     const prompt = `${profile}\n\nUser Query: ${message}`;
     
     return new Promise((resolve, reject) => {
-      const child = spawn('q', ['chat', '--no-interactive', '--trust-all-tools'], { stdio: 'pipe' });
+      const child = spawn('q', ['chat', '--no-interactive', '--trust-all-tools', prompt], { stdio: 'pipe' });
       this.activeProcesses.add(child);
       
       let output = '';
@@ -33,9 +33,6 @@ export class LocalAgentBridge implements AgentBridge {
           reject(new Error(`Local agent failed: ${errorOutput}`));
         }
       });
-
-      child.stdin.write(prompt);
-      child.stdin.end();
     });
   }
 

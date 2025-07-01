@@ -39,6 +39,7 @@ export function ChatView({ selectedAgent, agents, onSwitchAgent, pendingMessage,
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [editText, setEditText] = useState('');
   const [editTargetAgentId, setEditTargetAgentId] = useState<string>('');
+  const messageIdCounter = useRef(Date.now());
 
   const { toast } = useToast();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -50,7 +51,8 @@ export function ChatView({ selectedAgent, agents, onSwitchAgent, pendingMessage,
   
   useEffect(() => {
     // Clear messages and show initial greeting from new agent
-    setMessages([{ id: Date.now(), text: `Hello! I'm the ${selectedAgent.name}. How can I assist you today?`, sender: selectedAgent.id }]);
+    messageIdCounter.current = Date.now();
+    setMessages([{ id: messageIdCounter.current++, text: `Hello! I'm the ${selectedAgent.name}. How can I assist you today?`, sender: selectedAgent.id }]);
     setInput('');
     setEditingMessage(null);
   }, [selectedAgent]);
@@ -60,7 +62,7 @@ export function ChatView({ selectedAgent, agents, onSwitchAgent, pendingMessage,
     if (pendingMessage && selectedAgent) {
       // Add clean forwarded message with metadata
       const forwardedMessage: Message = {
-        id: Date.now(),
+        id: messageIdCounter.current++,
         text: pendingMessage,
         sender: 'user',
         isForwarded: true,
@@ -79,7 +81,7 @@ export function ChatView({ selectedAgent, agents, onSwitchAgent, pendingMessage,
           });
           
           const agentResponse: Message = { 
-            id: Date.now() + 1, 
+            id: messageIdCounter.current++, 
             text: result.response, 
             sender: selectedAgent.id
           };
@@ -126,7 +128,7 @@ export function ChatView({ selectedAgent, agents, onSwitchAgent, pendingMessage,
 
     // Add user message to UI first for immediate feedback
     if(agent.id === selectedAgent.id) {
-        const userMessage: Message = { id: Date.now(), text: messageText, sender: 'user' };
+        const userMessage: Message = { id: messageIdCounter.current++, text: messageText, sender: 'user' };
         setMessages(prev => [...prev, userMessage]);
     }
     
@@ -138,7 +140,7 @@ export function ChatView({ selectedAgent, agents, onSwitchAgent, pendingMessage,
       });
 
       const agentResponse: Message = { 
-        id: Date.now() + 1, 
+        id: messageIdCounter.current++, 
         text: result.response, 
         sender: agent.id
       };
@@ -152,7 +154,7 @@ export function ChatView({ selectedAgent, agents, onSwitchAgent, pendingMessage,
         description: "Failed to get a response from the agent.",
       });
       const errorMessage: Message = {
-        id: Date.now() + 1,
+        id: messageIdCounter.current++,
         text: "I'm sorry, but I encountered an error. Please try again later.",
         sender: agent.id,
       };
@@ -175,7 +177,7 @@ export function ChatView({ selectedAgent, agents, onSwitchAgent, pendingMessage,
     } else {
       // Fallback to current behavior if no switch handler
       const infoMessage: Message = { 
-         id: Date.now(), 
+         id: messageIdCounter.current++, 
          text: `You forwarded a message to ${targetAgent.name}.`, 
          sender: 'user'
       };
@@ -200,7 +202,7 @@ export function ChatView({ selectedAgent, agents, onSwitchAgent, pendingMessage,
     } else {
       // Fallback to current behavior if no switch handler
       const infoMessage: Message = { 
-          id: Date.now(), 
+          id: messageIdCounter.current++, 
           text: `You are editing and forwarding a message to ${targetAgent.name}...`, 
           sender: 'user'
       };

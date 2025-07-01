@@ -17,6 +17,8 @@ export async function POST(request: NextRequest) {
       response = `As an Analyst, I've analyzed "${message}". Based on data patterns and user behavior metrics, I recommend conducting A/B tests and monitoring key performance indicators to optimize this feature.`;
     } else if (agentId === 'product-manager') {
       response = `As a Product Manager for "${message}", I'll prioritize this based on user impact and business value. Let's define clear requirements, success metrics, and a roadmap for implementation.`;
+    } else if (agentId === 'software-developer') {
+      response = `As a Software Developer for "${message}", I'll help with technical implementation, code architecture, and development best practices. Let's break this down into actionable development tasks.`;
     } else {
       response = `Hello! I'm the ${agentName}. Regarding "${message}", I'm here to provide specialized assistance in my domain.`;
     }

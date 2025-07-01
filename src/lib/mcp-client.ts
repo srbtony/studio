@@ -64,6 +64,15 @@ class MCPClient {
     }
   }
 
+  async callSoftwareDeveloperAgent(message: string): Promise<string> {
+    try {
+      return await this.bridge.callAgent('software_developer', message);
+    } catch (error) {
+      console.error('Software Developer agent call failed:', error);
+      throw error;
+    }
+  }
+
   async disconnect() {
     if (this.transport) {
       await this.transport.close();

@@ -1,0 +1,16 @@
+To improve player experience and retention, particularly for struggling segments, we can target the average Hard level win rate for low-skill players.
+
+Current State Analysis:
+Low-skill players, representing 45.5% of the dataset, exhibit significantly lower win rates on Hard levels (average 21.6%) compared to high-skill players (average 45.7%). This indicates a substantial difficulty barrier for nearly half of our player base on the most challenging content.
+80% of low-skill players utilize Desperate Buys (DBs), demonstrating their willingness to spend gold to overcome challenges.
+Furthermore, 18.2% of all players made real-money gold purchases, and both instances were from low-skill, high-payment players who were struggling on Hard levels and likely ran out of in-game currency. This highlights a point of high frustration and potential churn risk for this valuable segment.
+
+Recommended Tuning Change: Reduce the Desperate Buy (DB) cost from 5 gold to 3 gold.
+
+Rationale: This adjustment directly addresses the friction points observed for low-skill players. By making Desperate Buys more affordable, we empower low-skill players to convert more near-losses into wins on challenging levels. This will directly increase their success rate, reduce frustration, and improve their overall progression experience. It also makes the DB mechanic more accessible, potentially encouraging the 20% of low-skill players who currently do not use DBs to engage with this progression tool.
+Expected Uplift: We anticipate an increase in the average Hard level win rate for low-skill players by 5-7 percentage points. This uplift is projected based on the increased affordability of Desperate Buys, allowing players to utilize them more frequently to secure wins. This improvement is expected to be observed within 1-2 weeks of the change being implemented, as players adapt their spending behavior.
+
+Consideration of Negative Impacts:
+Revenue: While the per-use gold cost of a Desperate Buy decreases, the increased accessibility and reduced frustration for low-skill players are expected to lead to higher engagement and retention. This could result in a net positive impact on overall long-term revenue by keeping a significant segment of players in the game longer, potentially leading to more total gold purchases over time, especially from the high-payment segment within this group. The data shows players are already running out of gold, so a cheaper DB might encourage more frequent spending of earned gold rather than accumulation.
+Wallet Inflation: Given that several players, particularly low-skill ones, are already depleting their gold and powerup reserves, reducing the DB cost is unlikely to cause significant wallet inflation. Instead, it will likely facilitate more consistent spending of earned gold on progression.
+Game Difficulty: This change specifically targets the most challenging levels for the most struggling segment, ensuring the game remains challenging for high-skill players while providing a more manageable progression path for low-skill players.

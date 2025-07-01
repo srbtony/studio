@@ -7,8 +7,9 @@ export interface AgentBridge {
 // Agent routing configuration
 export const AGENT_CONFIG = {
   analyst: 'mcp',
-  designer: 'local', 
-  product_manager: 'local'
+  designer: 'local',
+  product_manager: 'local',
+  software_developer: 'mcp'
 } as const;
 
 export type AgentName = keyof typeof AGENT_CONFIG;

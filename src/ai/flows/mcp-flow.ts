@@ -9,6 +9,8 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'zod';
+import { DEMO_CONFIG } from '@/config/demo-config';
+import { demoResponseService } from '@/services/demo-response-service';
 
 const McpChatInputSchema = z.object({
   agentId: z.string().describe('The ID of the agent to chat with.'),
@@ -28,18 +30,27 @@ export async function mcpChat(input: McpChatInput): Promise<McpChatOutput> {
   try {
     let response: string;
     
-    switch (input.agentId) {
-      case 'designer':
-        response = await mcpClient.callDesignerAgent(input.message);
-        break;
-      case 'product-manager':
-        response = await mcpClient.callProductManagerAgent(input.message);
-        break;
-      case 'analyst':
-        response = await mcpClient.callAnalystAgent(input.message);
-        break;
-      default:
-        response = `Hello! I'm the ${input.agentName}. You asked: "${input.message}". I'm here to help.`;
+    // Check if demo mode is enabled
+    if (DEMO_CONFIG.enabled) {
+      response = await demoResponseService.getResponse(input.agentId, input.message);
+    } else {
+      // Use existing MCP client functionality
+      switch (input.agentId) {
+        case 'designer':
+          response = await mcpClient.callDesignerAgent(input.message);
+          break;
+        case 'product-manager':
+          response = await mcpClient.callProductManagerAgent(input.message);
+          break;
+        case 'analyst':
+          response = await mcpClient.callAnalystAgent(input.message);
+          break;
+        case 'software-developer':
+          response = await mcpClient.callSoftwareDeveloperAgent(input.message);
+          break;
+        default:
+          response = `Hello! I'm the ${input.agentName}. You asked: "${input.message}". I'm here to help.`;
+      }
     }
     
     return { response };
